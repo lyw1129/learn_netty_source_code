@@ -520,10 +520,18 @@ public final void connect(
 ```
 AbstractNioUnsafe.connect 的实现如上代码所示, 在这个 connect 方法中, 调用了 doConnect 方法, `注意, 这个方法并不是 AbstractNioUnsafe 的方法, 而是 AbstractNioChannel 的抽象方法.` doConnect 方法是在 NioSocketChannel 中实现的, 因此进入到 **NioSocketChannel.doConnect** 中:
 ```
+private void doBind0(SocketAddress localAddress) throws Exception {
+    if (PlatformDependent.javaVersion() >= 7) {
+            SocketUtils.bind(javaChannel(), localAddress);
+    } else {
+        SocketUtils.bind(javaChannel().socket(), localAddress);
+    }
+}
+
 @Override
 protected boolean doConnect(SocketAddress remoteAddress, SocketAddress localAddress) throws Exception {
     if (localAddress != null) {
-        javaChannel().socket().bind(localAddress);
+        doBind0(localAddress);
     }
 
     boolean success = false;
