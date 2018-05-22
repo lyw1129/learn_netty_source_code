@@ -111,6 +111,19 @@ public NioSocketChannel() {
     this(newSocket(DEFAULT_SELECTOR_PROVIDER));
 }
 ```
+**4.1之后版本**
+```
+public NioSocketChannel() {
+    this(DEFAULT_SELECTOR_PROVIDER);
+}
+public NioSocketChannel(SelectorProvider provider) {
+    this(newSocket(provider));
+}
+public NioSocketChannel(Channel parent, SocketChannel socket) {
+    super(parent, socket);
+    config = new NioSocketChannelConfig(this, socket.socket());
+}
+```
 `这里的代码比较关键`, 我们看到, 在这个构造器中, 会调用 **newSocket** 来打开一个新的 Java NIO SocketChannel:
 ```
 private static SocketChannel newSocket(SelectorProvider provider) {
