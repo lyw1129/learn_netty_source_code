@@ -552,4 +552,4 @@ protected boolean doConnect(SocketAddress remoteAddress, SocketAddress localAddr
 我们终于看到的最关键的部分了, 庆祝一下!
 上面的代码不用多说, 首先是获取 Java NIO SocketChannel, 即我们已经分析过的, 从 NioSocketChannel.newSocket 返回的 SocketChannel 对象; 然后是调用 SocketChannel.connect 方法完成 Java NIO 层面上的 Socket 的连接.
 最后, 上面的代码流程可以用如下时序图直观地展示:
-![Alt text](./Netty 客户端的连接时序图.png)
+![Alt text](./Netty客户端的连接时序图.png)
