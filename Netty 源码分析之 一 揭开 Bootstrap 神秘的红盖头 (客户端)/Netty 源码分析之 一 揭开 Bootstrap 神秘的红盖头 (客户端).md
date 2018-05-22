@@ -352,24 +352,24 @@ javaChannel() 这个方法在前面我们已经知道了, 它返回的是一个 
 
 
 在netty中可以通过channelFuture和channelPromise来实现异步操作,channelFuture分为了四个状态，初始状态为uncompleted，isDone()所返回的状态为false，isSuccess()返回的状态为true，isCancelled()返回的状态为false，cause()所返回的异常为null
-* <pre>  
-*                                      +---------------------------+  
-*                                      | Completed successfully    |  
-*                                      +---------------------------+  
-*                                 +---->      isDone() = <b>true</b>      |  
-* +--------------------------+    |    |   isSuccess() = <b>true</b>      |  
-* |        Uncompleted       |    |    +===========================+  
-* +--------------------------+    |    | Completed with failure    |  
-* |      isDone() = <b>false</b>    |    |    +---------------------------+  
-* |   isSuccess() = false    |----+---->   isDone() = <b>true</b>         |  
-* | isCancelled() = false    |    |    | cause() = <b>non-null</b>     |  
-* |    cause() = null     |    |    +===========================+  
-* +--------------------------+    |    | Completed by cancellation |  
-*                                 |    +---------------------------+  
-*                                 +---->      isDone() = <b>true</b>      |  
-*                                      | isCancelled() = <b>true</b>      |  
-*                                      +---------------------------+  
-* </pre> 
+<pre>  
+                                     +---------------------------+  
+                                     | Completed successfully    |  
+                                     +---------------------------+  
+                                +---->      isDone() = <b>true</b>      |  
++--------------------------+    |    |   isSuccess() = <b>true</b>      |  
+|        Uncompleted       |    |    +===========================+  
++--------------------------+    |    | Completed with failure    |  
+|      isDone() = <b>false</b>    |    |    +---------------------------+  
+|   isSuccess() = false    |----+---->   isDone() = <b>true</b>         |  
+| isCancelled() = false    |    |    | cause() = <b>non-null</b>     |  
+|    cause() = null     |    |    +===========================+  
++--------------------------+    |    | Completed by cancellation |  
+                                |    +---------------------------+  
+                                +---->      isDone() = <b>true</b>      |  
+                                     | isCancelled() = <b>true</b>      |  
+                                     +---------------------------+  
+</pre> 
 在注册的过程中，往下面可以看出如果之前的evnetloop所对应的线程与当前的线程不一样的话，真正的注册流程则会作为task任务放入eventloop的阻塞队列异步进行。此时，整个注册操作就会异步进行，那么在注册完毕后，如果需要该channel用来connect或者bind的时候，怎么保证channel的注册状态呢，这个时候channelPromise起到了作用。看到absactUnsafe的register0()方法，值得一提的是一般情况下这个方法已经是异步进行当中的了
 
 ### handler 的添加过程
@@ -425,35 +425,41 @@ ChannelInitializer 是一个抽象类, 它有一个抽象的方法 initChannel, 
 首先, 客户端通过调用 **Bootstrap** 的 **connect** 方法进行连接.
 在 connect 中, 会进行一些参数检查后, 最终调用的是 **doConnect0** 方法, 其实现如下:
 ```
-private static void doConnect0(
-        final ChannelFuture regFuture, final Channel channel,
+private static void doConnect(
         final SocketAddress remoteAddress, final SocketAddress localAddress, final ChannelPromise promise) {
 
     // This method is invoked before channelRegistered() is triggered.  Give user handlers a chance to set up
     // the pipeline in its channelRegistered() implementation.
+    final Channel channel = connectPromise.channel();
     channel.eventLoop().execute(new Runnable() {
         @Override
         public void run() {
-            if (regFuture.isSuccess()) {
+            //if (regFuture.isSuccess()) {
                 if (localAddress == null) {
                     channel.connect(remoteAddress, promise);
                 } else {
                     channel.connect(remoteAddress, localAddress, promise);
                 }
                 promise.addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
-            } else {
-                promise.setFailure(regFuture.cause());
-            }
+            //} else {
+            //    promise.setFailure(regFuture.cause());
+            //}
         }
     });
 }
 ```
-在 doConnect0 中, 会在 event loop 线程中调用 Channel 的 connect 方法, 而这个 Channel 的具体类型是什么呢? 我们在 Channel 初始化这一小节中已经分析过了, 这里 channel 的类型就是 **NioSocketChannel**.
-进行跟踪到 channel.connect 中, 我们发现它调用的是 DefaultChannelPipeline#connect, 而, pipeline 的 connect 代码如下:
+在 doConnect 中, 会在 event loop 线程中调用 Channel 的 connect 方法, 而这个 Channel 的具体类型是什么呢? 我们在 Channel 初始化这一小节中已经分析过了, 这里 channel 的类型就是 **NioSocketChannel**.(有点疑问AbstractChannel)
+进行跟踪到 channel.connect 中, 我们发现它调用的是 DefaultChannelPipeline$connect, 而pipeline 的 connect 代码如下:
 ```
 @Override
-public ChannelFuture connect(SocketAddress remoteAddress) {
-    return tail.connect(remoteAddress);
+public final ChannelFuture connect(SocketAddress remoteAddress, ChannelPromise promise) {
+    return tail.connect(remoteAddress, promise);
+}
+
+@Override
+public final ChannelFuture connect(
+    SocketAddress remoteAddress, SocketAddress localAddress, ChannelPromise promise) {
+    return tail.connect(remoteAddress, localAddress, promise);
 }
 ```
 而 tail 字段, 我们已经分析过了, 是一个 TailContext 的实例, 而 TailContext 又是 AbstractChannelHandlerContext 的子类, 并且没有实现 connect 方法, 因此这里调用的其实是 AbstractChannelHandlerContext.connect, 我们看一下这个方法的实现:
@@ -498,7 +504,7 @@ public void connect(
 }
 ```
 这个 connect 方法很简单, 仅仅调用了 unsafe 的 connect 方法. 而 unsafe 又是什么呢?
-回顾一下 HeadContext 的构造器, 我们发现 unsafe 是 pipeline.channel().unsafe() 返回的, 而 Channel 的 unsafe 字段, 在这个例子中, 我们已经知道了, 其实是 AbstractNioByteChannel.NioByteUnsafe 内部类. 兜兜转转了一大圈, 我们找到了创建 Socket 连接的关键代码.
+回顾一下 HeadContext 的构造器, 我们发现 unsafe 是 pipeline.channel().unsafe() 返回的, 而 Channel 的 unsafe 字段, 在这个例子中, 我们已经知道了, 其实是 AbstractNioByteChannel.NioByteUnsafe 内部类(应该是AbstractNioChannel.AbstractNioUnsafe内部类). 兜兜转转了一大圈, 我们找到了创建 Socket 连接的关键代码.
 进行跟踪 NioByteUnsafe -> AbstractNioUnsafe.connect:
 ```
 @Override
