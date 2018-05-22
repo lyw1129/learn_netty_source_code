@@ -165,7 +165,7 @@ protected AbstractChannel(Channel parent) {
  - 调用 NioSocketChannel.newSocket(DEFAULT_SELECTOR_PROVIDER) 打开一个新的 Java NIO SocketChannel
  - AbstractChannel(Channel parent) 中初始化 AbstractChannel 的属性: 
   - parent 属性置为 null
-  - unsafe 通过newUnsafe() 实例化一个 unsafe 对象, 它的类型是 AbstractNioByteChannel.NioByteUnsafe 内部类`到底是调NioSocketChannel.NioSocketChannelUnsafe内部类，还是AbstractNioByteChannel.NioByteUnsafe 内部类`
+  - unsafe 通过newUnsafe() 实例化一个 unsafe 对象, 它的类型是 AbstractNioByteChannel.NioByteUnsafe 内部类`4.1版本之后是调NioSocketChannel.NioSocketChannelUnsafe内部类`
   - pipeline 是 new DefaultChannelPipeline(this) 新创建的实例. `这里体现了:Each channel has its own pipeline and it is created automatically when a new channel is created.`
  - AbstractNioChannel 中的属性:
   - SelectableChannel ch 被设置为 Java SocketChannel, 即 NioSocketChannel#newSocket 返回的 Java NIO SocketChannel.
