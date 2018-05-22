@@ -303,7 +303,7 @@ final ChannelFuture initAndRegister() {
 }
 ```
 当Channel 初始化后, 会紧接着调用 group().register() 方法来注册 Channel, 我们继续跟踪的话, 会发现其调用链如下:
-AbstractBootstrap.initAndRegister -> MultithreadEventLoopGroup.register -> SingleThreadEventLoop.register -> AbstractUnsafe.register
+AbstractBootstrap.initAndRegister -> MultithreadEventLoopGroup.register -> SingleThreadEventLoop.register（new DefaultChannelPromise()） -> AbstractUnsafe.register
 通过跟踪调用链, 最终我们发现是调用到了 unsafe 的 register 方法, 那么接下来我们就仔细看一下 AbstractUnsafe.register 方法中到底做了什么:
 ```
 @Override
@@ -349,6 +349,28 @@ javaChannel() 这个方法在前面我们已经知道了, 它返回的是一个 
  - AbstractNioChannel.doRegister 方法通过 javaChannel().register(eventLoop().selector, 0, this) 将 Channel 对应的 Java NIO SockerChannel 注册到一个 eventLoop 的 Selector 中, 并且将当前 Channel 作为 attachment.
 
 总的来说, Channel 注册过程所做的工作就是将 Channel 与对应的 EventLoop 关联, 因此这也体现了, 在 Netty 中, 每个 Channel 都会关联一个特定的 EventLoop, 并且这个 Channel 中的所有 IO 操作都是在这个 EventLoop 中执行的; 当关联好 Channel 和 EventLoop 后, 会继续调用底层的 Java NIO SocketChannel 的 register 方法, 将底层的 Java NIO SocketChannel 注册到指定的 selector 中. 通过这两步, 就完成了 Netty Channel 的注册过程.
+
+
+在netty中可以通过channelFuture和channelPromise来实现异步操作,channelFuture分为了四个状态，初始状态为uncompleted，isDone()所返回的状态为false，isSuccess()返回的状态为true，isCancelled()返回的状态为false，cause()所返回的异常为null
+* <pre>  
+*                                      +---------------------------+  
+*                                      | Completed successfully    |  
+*                                      +---------------------------+  
+*                                 +---->      isDone() = <b>true</b>      |  
+* +--------------------------+    |    |   isSuccess() = <b>true</b>      |  
+* |        Uncompleted       |    |    +===========================+  
+* +--------------------------+    |    | Completed with failure    |  
+* |      isDone() = <b>false</b>    |    |    +---------------------------+  
+* |   isSuccess() = false    |----+---->   isDone() = <b>true</b>         |  
+* | isCancelled() = false    |    |    | cause() = <b>non-null</b>     |  
+* |    cause() = null     |    |    +===========================+  
+* +--------------------------+    |    | Completed by cancellation |  
+*                                 |    +---------------------------+  
+*                                 +---->      isDone() = <b>true</b>      |  
+*                                      | isCancelled() = <b>true</b>      |  
+*                                      +---------------------------+  
+* </pre> 
+在注册的过程中，往下面可以看出如果之前的evnetloop所对应的线程与当前的线程不一样的话，真正的注册流程则会作为task任务放入eventloop的阻塞队列异步进行。此时，整个注册操作就会异步进行，那么在注册完毕后，如果需要该channel用来connect或者bind的时候，怎么保证channel的注册状态呢，这个时候channelPromise起到了作用。看到absactUnsafe的register0()方法，值得一提的是一般情况下这个方法已经是异步进行当中的了
 
 ### handler 的添加过程
 Netty 的一个强大和灵活之处就是基于 Pipeline 的自定义 handler 机制. 基于此, 我们可以像添加插件一样自由组合各种各样的 handler 来完成业务逻辑. 例如我们需要处理 HTTP 数据, 那么就可以在 pipeline 前添加一个 Http 的编解码的 Handler, 然后接着添加我们自己的业务逻辑的 handler, 这样网络上的数据流就向通过一个管道一样, 从不同的 handler 中流过并进行编解码, 最终在到达我们自定义的 handler 中.
