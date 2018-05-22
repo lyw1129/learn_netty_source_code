@@ -85,7 +85,7 @@ public T newChannel() {
 }
 ```
 根据上面代码的提示, 我们就可以确定:
- - Bootstrap 中的 ChannelFactory 的实现是 BootstrapChannelFactory
+ - Bootstrap 中的 ChannelFactory 的实现是 BootstrapChannelFactory ###(4.1之后是ReflectiveChannelFactory)
  - 生成的 Channel 的具体类型是 NioSocketChannel. 
 Channel 的实例化过程, 其实就是调用的 ChannelFactory#newChannel 方法, 而实例化的 Channel 的具体的类型又是和在初始化 Bootstrap 时传入的 channel() 方法的参数相关. 因此对于我们这个例子中的客户端的 Bootstrap 而言, 生成的的 Channel 实例就是 NioSocketChannel.
 
