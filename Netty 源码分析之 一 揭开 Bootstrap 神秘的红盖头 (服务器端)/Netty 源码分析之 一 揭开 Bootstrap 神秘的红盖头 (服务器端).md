@@ -67,7 +67,7 @@ public final class EchoServer {
 那么接下来我们按照分析客户端的流程对服务器端的代码也同样地分析一遍, 这样也方便我们对比一下服务器端和客户端有哪些不一样的地方.
 #### Channel 类型的确定
 同样的分析套路, 我们已经知道了, 在客户端中, Channel 的类型其实是在初始化时, 通过 Bootstrap.channel() 方法设置的, 服务器端自然也不例外.
-在服务器端, 我们调用了 ServerBootstarap.channel(NioServerSocketChannel.class), 传递了一个 NioServerSocketChannel Class 对象. 这样的话, 按照和分析客户端代码一样的流程, 我们就可以确定, NioServerSocketChannel 的实例化是通过 BootstrapChannelFactory 工厂类来完成的, 而 BootstrapChannelFactory 中的 clazz 字段被设置为了 NioServerSocketChannel.class, 因此当调用 BootstrapChannelFactory.newChannel() 时:
+在服务器端, 我们调用了 ServerBootstarap.channel(NioServerSocketChannel.class), 传递了一个 NioServerSocketChannel Class 对象. 这样的话, 按照和分析客户端代码一样的流程, 我们就可以确定, NioServerSocketChannel 的实例化是通过 BootstrapChannelFactory(4.1之后版本是ReflectiveChannelFactory) 工厂类来完成的, 而 BootstrapChannelFactory(4.1之后版本是ReflectiveChannelFactory) 中的 clazz 字段被设置为了 NioServerSocketChannel.class, 因此当调用 BootstrapChannelFactory.newChannel() 时:
 ```
 @Override
 public T newChannel() {
@@ -78,9 +78,9 @@ public T newChannel() {
 就获取到了一个 NioServerSocketChannel 的实例.
 
 最后我们也来总结一下:
- - ServerBootstrap 中的 ChannelFactory 的实现是 BootstrapChannelFactory
+ - ServerBootstrap 中的 ChannelFactory 的实现是 BootstrapChannelFactory(4.1之后版本是ReflectiveChannelFactory)
  - 生成的 Channel 的具体类型是 NioServerSocketChannel. 
-Channel 的实例化过程, 其实就是调用的 ChannelFactory.newChannel 方法, 而实例化的 Channel 的具体的类型又是和在初始化 ServerBootstrap 时传入的 channel() 方法的参数相关. 因此对于我们这个例子中的服务器端的 ServerBootstrap 而言, 生成的的 Channel 实例就是 NioServerSocketChannel.
+Channel 的实例化过程, 其实就是调用的 ChannelFactory.newChannel 方法, 而实例化的 Channel 的具体的类型又是和在初始化 ServerBootstrap 时传入的 channel() 方法的参数相关. 因此对于我们这个例子中的服务器端的 ServerBootstrap 而言, 生成的 Channel 实例就是 NioServerSocketChannel.
 
 #### NioServerSocketChannel 的实例化过程
 首先还是来看一下 NioServerSocketChannel 的实例化过程.
