@@ -104,7 +104,7 @@ public NioServerSocketChannel(ServerSocketChannel channel) {
     config = new NioServerSocketChannelConfig(this, javaChannel().socket());
 }
 ```
-这个构造其中, 调用父类构造器时, 传入的参数是 **SelectionKey.OP_ACCEPT**. 作为对比, 我们回想一下, 在客户端的 Channel 初始化时, 传入的参数是 **SelectionKey.OP_READ**. 有 Java NIO Socket 开发经验的朋友就知道了, Java NIO 是一种 Reactor 模式, 我们通过 selector 来实现 I/O 的多路复用复用. 在一开始时, 服务器端需要监听客户端的连接请求, 因此在这里我们设置了 **SelectionKey.OP_ACCEPT**, 即通知 selector 我们对客户端的连接请求感兴趣.
+这个构造其中, 调用父类构造器时, 传入的参数是 **SelectionKey.OP_ACCEPT**. 作为对比, 我们回想一下, 在客户端的 Channel 初始化时, 传入的参数是 **SelectionKey.OP_READ**. 有 Java NIO Socket 开发经验的朋友就知道了, Java NIO 是一种 Reactor 模式, 我们通过 selector 来实现 I/O 的多路复用. 在一开始时, 服务器端需要监听客户端的连接请求, 因此在这里我们设置了 **SelectionKey.OP_ACCEPT**, 即通知 selector 我们对客户端的连接请求感兴趣.
 
 接着和客户端的分析一下, 会逐级地调用父类的构造器 NioServerSocketChannel -> AbstractNioMessageChannel -> AbstractNioChannel -> AbstractChannel.
 同样的, 在 AbstractChannel 中会实例化一个 unsafe 和 pipeline:
@@ -115,7 +115,7 @@ protected AbstractChannel(Channel parent) {
     pipeline = new DefaultChannelPipeline(this);
 }
 ```
-不过, 这里有一点需要注意的是, 客户端的 unsafe 是一个 AbstractNioByteChannel#NioByteUnsafe 的实例, 而在服务器端时, 因为 AbstractNioMessageChannel 重写了newUnsafe 方法:
+不过, 这里有一点需要注意的是, 客户端的 unsafe 是一个 AbstractNioByteChannel#NioByteUnsafe(此处有问题应该是AbstractNioMessageChannel#NioMessageUnsafe) 的实例, 而在服务器端时, 因为 AbstractNioMessageChannel 重写了newUnsafe 方法:
 ```
 @Override
 protected AbstractNioUnsafe newUnsafe() {
