@@ -672,7 +672,9 @@ protected boolean doConnect(SocketAddress remoteAddress, SocketAddress localAddr
     boolean success = false;
     try {
         boolean connected = javaChannel().connect(remoteAddress);
-        if (!connected) {
+	//4.1之后版本
+	//boolean connected = SocketUtils.connect(javaChannel(), remoteAddress);
+        if (!connected) {
             selectionKey().interestOps(SelectionKey.OP_CONNECT);
         }
         success = true;
