@@ -180,10 +180,11 @@ final ChannelFuture initAndRegister() {
     ... 省略异常判断
     init(channel);//调用服务类的init方法
     ChannelFuture regFuture = group().register(channel);
+    //4.1之后版本为ChannelFuture regFuture = config().group().register(channel);
     return regFuture;
 }
 ```
-这里 group() 方法返回的是上面我们提到的 bossGroup, 而这里的 channel 我们也已经分析过了, 它是一个是一个 NioServerSocketChannsl 实例, 因此我们可以知道, group().register(channel) 将 bossGroup 和 NioServerSocketChannsl 关联起来了.
+这里 group() 方法返回的是上面我们提到的 bossGroup, 而这里的 channel 我们也已经分析过了, 它是一个 NioServerSocketChannel 实例, 因此我们可以知道, group().register(channel) 将 bossGroup 和 NioServerSocketChannel 关联起来了.
 那么 workerGroup 是在哪里与 NioSocketChannel 关联的呢?
 我们继续看 **init(channel)** 方法:
 ```
@@ -223,7 +224,7 @@ public void channelRead(ChannelHandlerContext ctx, Object msg) {
     childGroup.register(child).addListener(...);
 }
 ```
-ServerBootstrapAcceptor 中的 childGroup 是构造此对象是传入的 currentChildGroup, 即我们的 workerGroup, 而 Channel 是一个 NioSocketChannel 的实例, 因此这里的 childGroup.register 就是将 workerGroup 中的摸个 EventLoop 和 NioSocketChannel 关联了. 既然这样, 那么现在的问题是, ServerBootstrapAcceptor.channelRead 方法是怎么被调用的呢? 其实当一个 client 连接到 server 时, Java 底层的 NIO ServerSocketChannel 会有一个 **SelectionKey.OP_ACCEPT** 就绪事件, 接着就会调用到 NioServerSocketChannel.doReadMessages:
+ServerBootstrapAcceptor 中的 childGroup 是构造此对象是传入的 currentChildGroup, 即我们的 workerGroup, 而 Channel 是一个 NioSocketChannel(应该是NioServerSocketChannel) 的实例, 因此这里的 childGroup.register 就是将 workerGroup 中的某个 EventLoop 和 NioSocketChannel(应该是NioServerSocketChannel) 关联了. 既然这样, 那么现在的问题是, ServerBootstrapAcceptor.channelRead 方法是怎么被调用的呢? 其实当一个 client 连接到 server 时, Java 底层的 NIO ServerSocketChannel 会有一个 **SelectionKey.OP_ACCEPT** 就绪事件, 接着就会调用到 NioServerSocketChannel.doReadMessages:
 ```
 @Override
 protected int doReadMessages(List<Object> buf) throws Exception {
