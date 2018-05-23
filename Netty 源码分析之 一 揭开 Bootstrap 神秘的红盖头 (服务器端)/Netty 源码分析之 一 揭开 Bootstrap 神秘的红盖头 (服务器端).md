@@ -242,7 +242,7 @@ protected int doReadMessages(List<Object> buf) throws Exception {
     return 1;
 }
 ```
-**4.1之后版本**
+**4.1之后版本
 ```
 protected int doReadMessages(List<Object> buf) throws Exception {
     SocketChannel ch = SocketUtils.accept(javaChannel());
