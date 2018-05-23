@@ -130,11 +130,10 @@ void init(Channel channel) throws Exception {
 有朋友可能就有疑惑了, 我明明插入的是一个 ChannelInitializer 实例, 为什么在 ChannelPipeline 中的双向链表中的元素却是一个 ChannelHandlerContext? 为了解答这个问题, 我们继续在代码中寻找答案吧.
 我们刚才提到, 在 Bootstrap.init 中会调用 p.addLast() 方法, 将 ChannelInitializer 插入到链表末端:
 ```
-@Override
+@Override 4.1之后代码不同
 public ChannelPipeline addLast(EventExecutorGroup group, final String name, ChannelHandler handler) {
     synchronized (this) {
         checkDuplicateName(name); // 检查此 handler 是否有重复的名字
-
         AbstractChannelHandlerContext newCtx = new DefaultChannelHandlerContext(this, group, name, handler);
         addLast0(name, newCtx);
     }
