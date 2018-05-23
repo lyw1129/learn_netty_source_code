@@ -440,25 +440,25 @@ ChannelInitializer 是一个抽象类, 它有一个抽象的方法 initChannel, 
 在 connect 中, 会进行一些参数检查后, 最终调用的是 **doConnect0(4.1版本之后是doResolveAndConnect)** 方法, 其实现如下:
 ```
 private ChannelFuture doConnect(final SocketAddress remoteAddress, final SocketAddress localAddress) {
-	final ChannelFuture regFuture = initAndRegister();
-	final Channel channel = regFuture.channel();
-	if (regFuture.cause() != null) {
-	    return regFuture;
-	}
+    final ChannelFuture regFuture = initAndRegister();
+    final Channel channel = regFuture.channel();
+    if (regFuture.cause() != null) {
+        return regFuture;
+    }
 
-	final ChannelPromise promise = channel.newPromise();
-	if (regFuture.isDone()) {
-	    doConnect0(regFuture, channel, remoteAddress, localAddress, promise);
-	} else {
-	    regFuture.addListener(new ChannelFutureListener() {
-		@Override
-		public void operationComplete(ChannelFuture future) throws Exception {
-		    doConnect0(regFuture, channel, remoteAddress, localAddress, promise);
-		}
-	    });
-	}
+    final ChannelPromise promise = channel.newPromise();
+    if (regFuture.isDone()) {
+        doConnect0(regFuture, channel, remoteAddress, localAddress, promise);
+    } else {
+        regFuture.addListener(new ChannelFutureListener() {
+	    @Override
+	    public void operationComplete(ChannelFuture future) throws Exception {
+	        doConnect0(regFuture, channel, remoteAddress, localAddress, promise);
+	    }
+        });
+    }
 
-	return promise;
+    return promise;
 }
 private static void doConnect0(
         final SocketAddress remoteAddress, final SocketAddress localAddress, final ChannelPromise promise) {
@@ -486,84 +486,84 @@ private static void doConnect0(
 **4.1之后版本**
 ```
 private ChannelFuture doResolveAndConnect(final SocketAddress remoteAddress, final SocketAddress localAddress) {
-        final ChannelFuture regFuture = initAndRegister();
-        final Channel channel = regFuture.channel();
+    final ChannelFuture regFuture = initAndRegister();
+    final Channel channel = regFuture.channel();
 
-        if (regFuture.isDone()) {
-            if (!regFuture.isSuccess()) {
-                return regFuture;
-            }
-            return doResolveAndConnect0(channel, remoteAddress, localAddress, channel.newPromise());
-        } else {
-            // Registration future is almost always fulfilled already, but just in case it's not.
-            final PendingRegistrationPromise promise = new PendingRegistrationPromise(channel);
-            regFuture.addListener(new ChannelFutureListener() {
-                @Override
-                public void operationComplete(ChannelFuture future) throws Exception {
-                    // Directly obtain the cause and do a null check so we only need one volatile read in case of a
-                    // failure.
-                    Throwable cause = future.cause();
-                    if (cause != null) {
-                        // Registration on the EventLoop failed so fail the ChannelPromise directly to not cause an
-                        // IllegalStateException once we try to access the EventLoop of the Channel.
-                        promise.setFailure(cause);
-                    } else {
-                        // Registration was successful, so set the correct executor to use.
-                        // See https://github.com/netty/netty/issues/2586
-                        promise.registered();
-                        doResolveAndConnect0(channel, remoteAddress, localAddress, promise);
-                    }
-                }
-            });
-            return promise;
+    if (regFuture.isDone()) {
+        if (!regFuture.isSuccess()) {
+	    return regFuture;
         }
+        return doResolveAndConnect0(channel, remoteAddress, localAddress, channel.newPromise());
+    } else {
+        // Registration future is almost always fulfilled already, but just in case it's not.
+        final PendingRegistrationPromise promise = new PendingRegistrationPromise(channel);
+        regFuture.addListener(new ChannelFutureListener() {
+	    @Override
+	    public void operationComplete(ChannelFuture future) throws Exception {
+	        // Directly obtain the cause and do a null check so we only need one volatile read in case of a
+	        // failure.
+	        Throwable cause = future.cause();
+	        if (cause != null) {
+		    // Registration on the EventLoop failed so fail the ChannelPromise directly to not cause an
+		    // IllegalStateException once we try to access the EventLoop of the Channel.
+		    promise.setFailure(cause);
+	        } else {
+		    // Registration was successful, so set the correct executor to use.
+		    // See https://github.com/netty/netty/issues/2586
+		    promise.registered();
+		    doResolveAndConnect0(channel, remoteAddress, localAddress, promise);
+	        }
+	    }
+        });
+        return promise;
     }
+}
     
 private ChannelFuture doResolveAndConnect0(final Channel channel, SocketAddress remoteAddress,
                                                final SocketAddress localAddress, final ChannelPromise promise) {
-        try {
-            final EventLoop eventLoop = channel.eventLoop();
-            final AddressResolver<SocketAddress> resolver = this.resolver.getResolver(eventLoop);
+    try {
+        final EventLoop eventLoop = channel.eventLoop();
+        final AddressResolver<SocketAddress> resolver = this.resolver.getResolver(eventLoop);
 
-            if (!resolver.isSupported(remoteAddress) || resolver.isResolved(remoteAddress)) {
-                // Resolver has no idea about what to do with the specified remote address or it's resolved already.
-                doConnect(remoteAddress, localAddress, promise);
-                return promise;
-            }
-
-            final Future<SocketAddress> resolveFuture = resolver.resolve(remoteAddress);
-
-            if (resolveFuture.isDone()) {
-                final Throwable resolveFailureCause = resolveFuture.cause();
-
-                if (resolveFailureCause != null) {
-                    // Failed to resolve immediately
-                    channel.close();
-                    promise.setFailure(resolveFailureCause);
-                } else {
-                    // Succeeded to resolve immediately; cached? (or did a blocking lookup)
-                    doConnect(resolveFuture.getNow(), localAddress, promise);
-                }
-                return promise;
-            }
-
-            // Wait until the name resolution is finished.
-            resolveFuture.addListener(new FutureListener<SocketAddress>() {
-                @Override
-                public void operationComplete(Future<SocketAddress> future) throws Exception {
-                    if (future.cause() != null) {
-                        channel.close();
-                        promise.setFailure(future.cause());
-                    } else {
-                        doConnect(future.getNow(), localAddress, promise);
-                    }
-                }
-            });
-        } catch (Throwable cause) {
-            promise.tryFailure(cause);
+        if (!resolver.isSupported(remoteAddress) || resolver.isResolved(remoteAddress)) {
+	    // Resolver has no idea about what to do with the specified remote address or it's resolved already.
+	    doConnect(remoteAddress, localAddress, promise);
+	    return promise;
         }
-        return promise;
+
+        final Future<SocketAddress> resolveFuture = resolver.resolve(remoteAddress);
+
+        if (resolveFuture.isDone()) {
+	    final Throwable resolveFailureCause = resolveFuture.cause();
+
+	    if (resolveFailureCause != null) {
+	        // Failed to resolve immediately
+	        channel.close();
+	        promise.setFailure(resolveFailureCause);
+	    } else {
+	        // Succeeded to resolve immediately; cached? (or did a blocking lookup)
+	        doConnect(resolveFuture.getNow(), localAddress, promise);
+	    }
+	    return promise;
+         }
+
+        // Wait until the name resolution is finished.
+        resolveFuture.addListener(new FutureListener<SocketAddress>() {
+	    @Override
+	    public void operationComplete(Future<SocketAddress> future) throws Exception {
+	        if (future.cause() != null) {
+		    channel.close();
+		    promise.setFailure(future.cause());
+	        } else {
+		    doConnect(future.getNow(), localAddress, promise);
+	        }
+	    }
+        });
+    } catch (Throwable cause) {
+        promise.tryFailure(cause);
     }
+    return promise;
+}
 private static void doConnect(
     final SocketAddress remoteAddress, final SocketAddress localAddress, final ChannelPromise connectPromise) {
 
