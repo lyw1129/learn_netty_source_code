@@ -208,7 +208,15 @@ void init(Channel channel) throws Exception {
             }
             pipeline.addLast(new ServerBootstrapAcceptor(
                     currentChildGroup, currentChildHandler, currentChildOptions, currentChildAttrs));
-        }
+	    //4.1之后
+	    //ch.eventLoop().execute(new Runnable() {
+	    //    @Override
+	    //    public void run() {
+	    //	    pipeline.addLast(new ServerBootstrapAcceptor(
+	    //		ch, currentChildGroup, currentChildHandler, currentChildOptions, currentChildAttrs));
+	    //    }
+	    //});
+        版本}
     });
 }
 ```
@@ -224,7 +232,7 @@ public void channelRead(ChannelHandlerContext ctx, Object msg) {
     childGroup.register(child).addListener(...);
 }
 ```
-ServerBootstrapAcceptor 中的 childGroup 是构造此对象是传入的 currentChildGroup, 即我们的 workerGroup, 而 Channel 是一个 NioSocketChannel 的实例, 因此这里的 childGroup.register 就是将 workerGroup 中的某个 EventLoop 和 NioSocketChannel 关联了. 既然这样, 那么现在的问题是, ServerBootstrapAcceptor.channelRead 方法是怎么被调用的呢? 其实当一个 client 连接到 server 时, Java 底层的 NIO ServerSocketChannel 会有一个 **SelectionKey.OP_ACCEPT** 就绪事件, 接着就会调用到 NioServerSocketChannel.doReadMessages:
+ServerBootstrapAcceptor 中的 childGroup 是构造此对象是传入的 currentChildGroup, 即我们的 workerGroup, 而 Channel 是一个 NioSocketChannel(Server启动的时候应该是NioServerSocketChannel) 的实例, 因此这里的 childGroup.register 就是将 workerGroup 中的某个 EventLoop 和 NioSocketChannel(Server启动的时候应该是NioServerSocketChannel) 关联了. 既然这样, 那么现在的问题是, ServerBootstrapAcceptor.channelRead 方法是怎么被调用的呢? 其实当一个 client 连接到 server 时, Java 底层的 NIO ServerSocketChannel 会有一个 **SelectionKey.OP_ACCEPT** 就绪事件, 接着就会调用到 NioServerSocketChannel.doReadMessages:
 ```
 @Override
 protected int doReadMessages(List<Object> buf) throws Exception {
