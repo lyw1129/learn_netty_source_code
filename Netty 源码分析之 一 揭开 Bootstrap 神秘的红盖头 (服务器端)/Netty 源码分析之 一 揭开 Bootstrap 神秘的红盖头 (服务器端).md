@@ -178,8 +178,8 @@ AbstractBootstrap.initAndRegister 是我们的老朋友了, 我们在分析客�
 final ChannelFuture initAndRegister() {
     final Channel channel = channelFactory().newChannel();
     ... 省略异常判断
-    init(channel);
-    ChannelFuture regFuture = group().register(channel);
+    init(channel);//调用服务类的init方法
+    ChannelFuture regFuture = group().register(channel);
     return regFuture;
 }
 ```
