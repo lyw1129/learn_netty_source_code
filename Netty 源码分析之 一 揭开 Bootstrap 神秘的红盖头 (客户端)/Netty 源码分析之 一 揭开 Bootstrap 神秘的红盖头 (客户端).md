@@ -72,7 +72,8 @@ public B channel(Class<? extends C> channelClass) {
     if (channelClass == null) {
         throw new NullPointerException("channelClass");
     }
-    return channelFactory(new BootstrapChannelFactory<C>(channelClass));//4.1 return channelFactory(new ReflectiveChannelFactory<C>(channelClass));
+    //4.1 return channelFactory(new ReflectiveChannelFactory<C>(channelClass));
+    return channelFactory(new BootstrapChannelFactory<C>(channelClass));
 }
 ```
 而 BootstrapChannelFactory 实现了 ChannelFactory 接口, 它提供了唯一的方法, 即 **newChannel**. ChannelFactory, 顾名思义, 就是产生 Channel 的工厂类.
