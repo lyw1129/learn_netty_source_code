@@ -134,7 +134,7 @@ protected AbstractNioUnsafe newUnsafe() {
     return new NioMessageUnsafe();
 }
 ```
-因此在服务器端, unsafe 字段其实是一个 AbstractNioMessageChannel#AbstractNioUnsafe 的实例.
+因此在服务器端, unsafe 字段其实是一个 AbstractNioMessageChannel#AbstractNioUnsafe(应该是NioMessageUnsafe内部类继承了AbstractNioUnsafe) 的实例.
 我们来总结一下, 在  NioServerSocketChannsl 实例化过程中, 所需要做的工作:
  - 调用 NioServerSocketChannel.newSocket(DEFAULT_SELECTOR_PROVIDER) 打开一个新的 Java NIO ServerSocketChannel
  - AbstractChannel(Channel parent) 中初始化 AbstractChannel 的属性: 
