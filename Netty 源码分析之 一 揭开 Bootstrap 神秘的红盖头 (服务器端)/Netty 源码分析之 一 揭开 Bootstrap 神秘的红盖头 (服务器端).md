@@ -112,10 +112,22 @@ public NioServerSocketChannel(ServerSocketChannel channel) {
 protected AbstractChannel(Channel parent) {
     this.parent = parent;
     unsafe = newUnsafe();
-    pipeline = new DefaultChannelPipeline(this);
+    pipeline = newChannelPipeline();
+}
+protected DefaultChannelPipeline newChannelPipeline() {
+    return new DefaultChannelPipeline(this);
 }
 ```
-不过, 这里有一点需要注意的是, 客户端的 unsafe 是一个 AbstractNioByteChannel#NioByteUnsafe(此处有问题应该是AbstractNioMessageChannel#NioMessageUnsafe) 的实例, 而在服务器端时, 因为 AbstractNioMessageChannel 重写了newUnsafe 方法:
+**4.1之后版本**
+```
+protected AbstractChannel(Channel parent) {
+    this.parent = parent;
+    id = newId();
+    unsafe = newUnsafe();
+    pipeline = newChannelPipeline();
+}
+```
+不过, 这里有一点需要注意的是, 客户端的 unsafe 是一个 AbstractNioByteChannel#NioByteUnsafe(此处有问题应该是NioSocketChannel#NioSocketChannelUnsafe) 的实例, 而在服务器端时, 因为 AbstractNioMessageChannel 重写了newUnsafe 方法:
 ```
 @Override
 protected AbstractNioUnsafe newUnsafe() {
